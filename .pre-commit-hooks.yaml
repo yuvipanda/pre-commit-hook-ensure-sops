@@ -1,0 +1,8 @@
+- id: sops-encryption
+  language: python
+  entry: python3 -m pre_commit_hook_ensure_sops
+  name: Ensure secrets are encrypted with sops
+  # Be aggressive - ensure anything with the word secret in the filename
+  # or file path is encryped. Users of individual repos can exclude things
+  # with `exclude` if necessary.
+  files: .*secret.*
