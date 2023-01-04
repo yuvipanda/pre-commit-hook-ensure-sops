@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pre-commit-hook-ensure-sops",
-    version="0.1",
+    version="1.0",
     author="Yuvi Panda",
     author_email="yuvipanda@gmail.com",
     description="pre-commit hook to ensure that files that should be encrypted with sops are in fact encrypted",

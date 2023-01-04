@@ -3,6 +3,7 @@
 Validate if given list of files are encrypted with sops.
 """
 from argparse import ArgumentParser
+import json
 from ruamel.yaml import YAML
 from ruamel.yaml.parser import ParserError
 import sys
@@ -36,14 +37,20 @@ def check_file(filename):
     Returns a boolean indicating wether given file is valid or not, as well as
     a string with a human readable success / failure message.
     """
+    # All YAML is valid JSON *except* if it contains hard tabs, and the default go
+    # JSON outputter uses hard tabs, and since sops is written in go it does the same.
+    # So we can't just use a YAML loader here - we use a yaml one if it ends in
+    # .yaml, but json otherwise
+    if filename.endswith('.yaml'):
+        loader_func = yaml.load
+    else:
+        loader_func = json.load
     # sops doesn't have a --verify (https://github.com/mozilla/sops/issues/437)
     # so we implement some heuristics, primarily to guard against unencrypted
     # files being checked in.
     with open(filename) as f:
         try:
-            # Use the YAML parser to load files. All JSON is valid YAML, so this
-            # properly deals with JSON files too
-            doc = yaml.load(f)
+            doc = loader_func(f)
         except ParserError:
             # All sops encrypted files are valid JSON or YAML
             return False, f"{filename}: Not valid JSON or YAML, is not properly encrypted"
