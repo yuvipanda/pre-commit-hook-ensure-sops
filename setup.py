@@ -15,5 +15,6 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         "ruamel.yaml",
+        "python-dotenv"
     ],
 )
