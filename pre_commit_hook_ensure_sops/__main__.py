@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 import json
 from ruamel.yaml import YAML
 from ruamel.yaml.parser import ParserError
+from dotenv import dotenv_values
 import sys
 
 yaml = YAML(typ='safe')
@@ -22,6 +23,8 @@ def validate_enc(item):
     """
 
     if isinstance(item, str):
+        if item == "": # empty strings are fine
+            return True
         return item.startswith('ENC[')
     elif isinstance(item, list):
         return all(validate_enc(i) for i in item)
@@ -37,33 +40,43 @@ def check_file(filename):
     Returns a boolean indicating wether given file is valid or not, as well as
     a string with a human readable success / failure message.
     """
-    # All YAML is valid JSON *except* if it contains hard tabs, and the default go
-    # JSON outputter uses hard tabs, and since sops is written in go it does the same.
-    # So we can't just use a YAML loader here - we use a yaml one if it ends in
-    # .yaml, but json otherwise
-    if filename.endswith('.yaml'):
-        loader_func = yaml.load
-    else:
-        loader_func = json.load
     # sops doesn't have a --verify (https://github.com/mozilla/sops/issues/437)
     # so we implement some heuristics, primarily to guard against unencrypted
     # files being checked in.
     with open(filename) as f:
         try:
-            doc = loader_func(f)
+            # All YAML is valid JSON *except* if it contains hard tabs, and the default go
+            # JSON outputter uses hard tabs, and since sops is written in go it does the same.
+            # So we can't just use a YAML loader here - we use a yaml one if it ends in
+            # .yaml, but json otherwise
+            if filename.endswith('.yaml'):
+                doc = yaml.load(f)
+            elif filename.endswith('.env'):
+                doc = dotenv_values(stream=f)
+            else:
+                doc = json.load(f)
+            
         except ParserError:
-            # All sops encrypted files are valid JSON or YAML
-            return False, f"{filename}: Not valid JSON or YAML, is not properly encrypted"
+            # All sops encrypted files are valid JSON, YAML or dotenv
+            return False, f"{filename}: Not valid JSON, YAML or dotenv. is not properly encrypted"
 
-    if 'sops' not in doc:
-        # sops puts a `sops` key in the encrypted output. If it is not
-        # present, very likely the file is not encrypted.
-        return False, f"{filename}: sops metadata key not found in file, is not properly encrypted"
+
+    if filename.endswith('.env'):
+        if "sops_mac" not in doc:
+            return False, f"{filename}: sops metadata key not found in file, is not properly encrypted"
+    else:    
+        if 'sops' not in doc:
+            # sops puts a `sops` key in the encrypted output. If it is not
+            # present, very likely the file is not encrypted.
+            return False, f"{filename}: sops metadata key not found in file, is not properly encrypted"
 
     invalid_keys = []
     for k in doc:
+        # Values under the `sops` key are not encrypted.
         if k != 'sops':
-            # Values under the `sops` key are not encrypted.
+            if filename.endswith('.env') and k.startswith('sops_'):
+              # sops keys in env files get flattened
+              continue
             if not validate_enc(doc[k]):
                 # Collect all invalid keys so we can provide useful error message
                 invalid_keys.append(k)
