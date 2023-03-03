@@ -50,7 +50,8 @@ def check_file(filename, args):
     if filename.endswith('.yaml'):
         if args.allow_multiple_documents:
             loader_func = _load_all
-        loader_func = yaml.load
+        else:
+            loader_func = yaml.load
     else:
         loader_func = json.load
     # sops doesn't have a --verify (https://github.com/mozilla/sops/issues/437)
