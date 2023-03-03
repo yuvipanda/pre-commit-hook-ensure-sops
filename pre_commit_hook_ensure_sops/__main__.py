@@ -48,7 +48,7 @@ def check_file(filename, args):
     # We also leverage the _load_all function if the user specifies to allow muliple documents
     # in each individual YAML file
     if filename.endswith('.yaml'):
-        if args.allow_multiple:
+        if args.allow_multiple_documents:
             loader_func = _load_all
         loader_func = yaml.load
     else:
