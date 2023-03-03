@@ -76,6 +76,9 @@ def check_file(filename, args):
             # present, very likely the file is not encrypted.
             return False, f"{filename}: sops metadata key not found in file, is not properly encrypted"
 
+        # Checks for the presense of the encrypted_regex key within the sops section
+        # if present sets the encrypted regex value to the value of this key
+        # otherwise, sets the value to "match all strings" \S regex
         if 'encrypted_regex' in doc['sops']:
             encrypted_regex = doc['sops']['encrypted_regex']
         else:
