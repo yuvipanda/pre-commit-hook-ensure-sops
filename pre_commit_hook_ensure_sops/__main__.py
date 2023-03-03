@@ -10,6 +10,10 @@ import sys
 
 yaml = YAML(typ='safe')
 
+def _load_all(*args, **kwargs):
+    # need to exhaust the generator
+    return tuple(yaml.load_all(*args, **kwargs))
+
 
 def validate_enc(item):
     """
@@ -30,7 +34,7 @@ def validate_enc(item):
     else:
         return False
 
-def check_file(filename):
+def check_file(filename, args):
     """
     Check if a file has been encrypted properly with sops.
 
@@ -41,7 +45,11 @@ def check_file(filename):
     # JSON outputter uses hard tabs, and since sops is written in go it does the same.
     # So we can't just use a YAML loader here - we use a yaml one if it ends in
     # .yaml, but json otherwise
+    # We also leverage the _load_all function if the user specifies to allow muliple documents
+    # in each individual YAML file
     if filename.endswith('.yaml'):
+        if args.allow_multiple:
+            loader_func = _load_all
         loader_func = yaml.load
     else:
         loader_func = json.load
@@ -76,13 +84,14 @@ def check_file(filename):
 def main():
     argparser = ArgumentParser()
     argparser.add_argument('filenames', nargs='+')
+    argparser.add_argument('-m', '--allow-multiple-documents', action='store_true')
 
     args = argparser.parse_args()
 
     failed_messages = []
 
     for f in args.filenames:
-        is_valid, message = check_file(f)
+        is_valid, message = check_file(f, args)
 
         if not is_valid:
             failed_messages.append(message)
