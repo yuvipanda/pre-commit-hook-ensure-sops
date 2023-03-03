@@ -7,6 +7,7 @@ import json
 from ruamel.yaml import YAML
 from ruamel.yaml.parser import ParserError
 import sys
+import re
 
 yaml = YAML(typ='safe')
 
@@ -63,22 +64,33 @@ def check_file(filename, args):
         except ParserError:
             # All sops encrypted files are valid JSON or YAML
             return False, f"{filename}: Not valid JSON or YAML, is not properly encrypted"
+    if not args.allow_multiple_documents:
+        docs = [doc]
+    else:
+        docs = doc
 
-    if 'sops' not in doc:
-        # sops puts a `sops` key in the encrypted output. If it is not
-        # present, very likely the file is not encrypted.
-        return False, f"{filename}: sops metadata key not found in file, is not properly encrypted"
+    for doc in docs:
 
-    invalid_keys = []
-    for k in doc:
-        if k != 'sops':
-            # Values under the `sops` key are not encrypted.
-            if not validate_enc(doc[k]):
-                # Collect all invalid keys so we can provide useful error message
-                invalid_keys.append(k)
+        if 'sops' not in doc:
+            # sops puts a `sops` key in the encrypted output. If it is not
+            # present, very likely the file is not encrypted.
+            return False, f"{filename}: sops metadata key not found in file, is not properly encrypted"
 
-    if invalid_keys:
-        return False, f"{filename}: Unencrypted values found nested under keys: {','.join(invalid_keys)}"
+        if 'encrypted_regex' in doc['sops']:
+            encrypted_regex = doc['sops']['encrypted_regex']
+        else:
+            encrypted_regex = '\S'
+
+        invalid_keys = []
+        for k in doc:
+            if k != 'sops' and re.match(encrypted_regex, k):
+                # Values under the `sops` key are not encrypted.
+                if not validate_enc(doc[k]):
+                    # Collect all invalid keys so we can provide useful error message
+                    invalid_keys.append(k)
+
+        if invalid_keys:
+            return False, f"{filename}: Unencrypted values found nested under keys: {','.join(invalid_keys)}"
 
     return True, f"{filename}: Valid encryption"
 
