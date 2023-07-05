@@ -18,11 +18,13 @@ def validate_enc(item):
     All leaf values in a sops encrypted file must be strings that
     start with ENC[. We iterate through lists and dicts, checking
     only for leaf strings. Presence of any other data type (like
-    bool, number, etc) also makes the file invalid.
+    bool, number, etc) also makes the file invalid except an empty
+    string which would pass the encryption check.
     """
-
+    
     if isinstance(item, str):
-        return item.startswith('ENC[')
+        if item == "" or item.startswith('ENC['):
+            return True
     elif isinstance(item, list):
         return all(validate_enc(i) for i in item)
     elif isinstance(item, dict):
