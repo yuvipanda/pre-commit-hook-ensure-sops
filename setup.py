@@ -13,6 +13,11 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/yuvipanda/pre-commit-hook-ensure-sops",
     packages=setuptools.find_packages(),
+    entry_points={
+        "console_scripts": [
+            "pre-commit-hook-ensure-sops = pre_commit_hook_ensure_sops.__main__:main",
+        ]
+    },
     install_requires=[
         "ruamel.yaml",
     ],
