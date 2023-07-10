@@ -21,4 +21,7 @@ setuptools.setup(
     install_requires=[
         "ruamel.yaml",
     ],
+    test_requires=[
+        "pytest",
+    ],
 )
